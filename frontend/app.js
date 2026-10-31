@@ -45,24 +45,32 @@
     if (data.stable_label !== undefined) {
       const active = Boolean(data.stable_label && data.stable_label !== "blank");
       ui.letter.textContent = active ? data.stable_label : "—";
-      ui.letterState.textContent = active ? "Sign held steady" : "Waiting for a sign";
+      if (data.letter_accepted && active) {
+        ui.letterState.textContent = `Added ${data.stable_label} · change handshape`;
+      } else if (active && data.awaiting_release) {
+        ui.letterState.textContent = "Letter added · change handshape";
+      } else {
+        ui.letterState.textContent = active ? "Stabilizing sign…" : "Waiting for a sign";
+      }
       ui.letterState.classList.toggle("detected", active);
     }
     const word = data.current_word || "";
-    const transcript = data.transcript || "";
+    const sentence = data.sentence || data.transcript || "";
     ui.word.innerHTML = word ? escapeHtml(word) : '<span class="empty-word">Your letters will collect here</span>';
-    ui.sentence.innerHTML = transcript ? escapeHtml(transcript) : '<span class="empty-sentence">Your completed words will appear here.</span>';
-    const completedCount = (data.sentence || "").trim().split(/\s+/).filter(Boolean).length;
+    ui.sentence.innerHTML = sentence ? escapeHtml(sentence) : '<span class="empty-sentence">Your letters and words will appear here.</span>';
+    const completedCount = (data.completed_sentence || "").trim().split(/\s+/).filter(Boolean).length;
     const count = completedCount + (word ? 1 : 0);
     ui.wordCount.textContent = `${count} WORD${count === 1 ? "" : "S"}`;
-    if (data.last_event?.startsWith("Word completed:")) ui.letterState.textContent = data.last_event;
   }
 
   function captureBlob() {
     if (!video.videoWidth || !video.videoHeight) return Promise.resolve(null);
-    const side = Math.min(video.videoWidth * 0.68, video.videoHeight * 0.78);
-    const left = (video.videoWidth - side) / 2;
-    const top = (video.videoHeight - side) / 2;
+    // Match the original training ROI: x=10..50% of the mirrored frame and
+    // y=10..50% of its width. The raw webcam frame is unmirrored, so crop its
+    // left half and mirror that crop before sending it to the model.
+    const side = Math.min(video.videoWidth * 0.5 - 10, video.videoHeight - 20);
+    const left = 10;
+    const top = 10;
     canvas.width = canvas.height = 320;
     context.save();
     context.translate(canvas.width, 0);
@@ -90,7 +98,7 @@
       ui.letterState.textContent = error.message || "Could not read this frame";
     } finally {
       busy = false;
-      if (running) timer = window.setTimeout(sendFrame, 150);
+      if (running) timer = window.setTimeout(sendFrame, 40);
     }
   }
 
@@ -115,7 +123,7 @@
       ui.feed.innerHTML = "<i></i> CAMERA ON";
       ui.start.textContent = "Camera running";
       ui.stop.disabled = false;
-      ui.hint.textContent = "Hold a sign steady, then release between letters";
+      ui.hint.textContent = "Keep hand inside the guide; change shape for each letter";
       sendFrame();
     } catch (error) {
       ui.hint.textContent = error.name === "NotAllowedError"

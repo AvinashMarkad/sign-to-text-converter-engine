@@ -54,7 +54,7 @@ h1 span { color: var(--lime); }
 .camera-placeholder-icon { width: 45px; height: 37px; border: 1px solid #3b4b50; border-radius: 8px; margin-bottom: 8px; position: relative; }
 .camera-placeholder-icon::before { content: ""; position: absolute; right: -11px; top: 10px; width: 10px; height: 15px; border: 1px solid #3b4b50; border-left: 0; clip-path: polygon(0 25%,100% 0,100% 100%,0 75%); }
 .camera-placeholder-icon span { position: absolute; width: 14px; height: 14px; border: 1px solid var(--lime); border-radius: 50%; left: 14px; top: 10px; }
-.roi-frame { position: absolute; width: min(58%, 70%); height: 78%; top: 11%; left: 21%; border: 1px solid #c8f36a57; transition: opacity .2s; }
+.roi-frame { position: absolute; width: 48%; height: 65%; top: 2%; left: 50%; border: 1px solid #c8f36a57; transition: opacity .2s; }
 .roi-frame::after { content: ""; inset: 0; position: absolute; background: linear-gradient(130deg, #c8f36a0b, transparent 48%, #c8f36a08); }
 .roi-corner { position: absolute; width: 13px; height: 13px; border-color: var(--lime); border-style: solid; z-index: 1; }
 .roi-corner.tl { left: -1px; top: -1px; border-width: 2px 0 0 2px; }
@@ -127,8 +127,8 @@ footer { display: flex; justify-content: space-between; padding: 34px 0 22px; co
   .intro { padding: 37px 0 24px; }
   h1 { letter-spacing: -2.4px; }
   .intro p { font-size: 13px; }
-  .video-stage { aspect-ratio: 1.12; }
-  .roi-frame { width: 65%; height: 73%; left: 17.5%; top: 13.5%; }
+  .video-stage { aspect-ratio: 1.32; }
+  .roi-frame { width: 48%; height: 65%; left: 50%; top: 2%; }
   .camera-hint { display: none; }
   .camera-controls { padding: 12px; }
   .steps { align-items: flex-start; gap: 8px; }

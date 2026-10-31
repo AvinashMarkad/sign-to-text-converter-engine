@@ -25,6 +25,9 @@ FRONTEND_DIR = ROOT / "frontend"
 LOGGER = logging.getLogger("sign_to_text")
 MAX_FRAME_BYTES = 2_000_000
 SESSION_IDLE_SECONDS = 3 * 60 * 60
+WORD_PAUSE_SECONDS = 3.0
+BLANK_RELEASE_SECONDS = 0.12
+FAST_ACCEPT_CONFIDENCE = 0.70
 
 
 class ActionRequest(BaseModel):
@@ -172,10 +175,11 @@ class Recognizer:
 class TranscriptionSession:
     current_word: str = ""
     words: list[str] = field(default_factory=list)
-    history: deque[tuple[str, float]] = field(default_factory=lambda: deque(maxlen=5))
+    history: deque[tuple[str, float]] = field(default_factory=lambda: deque(maxlen=3))
     candidate: str = ""
     candidate_since: float = field(default_factory=time.monotonic)
     armed: bool = True
+    last_accepted_label: str = ""
     last_letter_at: float = 0.0
     last_seen: float = field(default_factory=time.monotonic)
     last_event: str = ""
@@ -188,46 +192,72 @@ class TranscriptionSession:
             return f"{committed} {self.current_word}"
         return committed or self.current_word
 
-    def snapshot(self, label: str, confidence: float, stable: str) -> dict:
+    def snapshot(
+        self, label: str, confidence: float, stable: str, letter_accepted: bool = False
+    ) -> dict:
+        completed_sentence = " ".join(self.words)
         return {
             "label": label,
             "confidence": round(confidence, 4),
             "stable_label": stable,
+            "letter_accepted": letter_accepted,
+            "awaiting_release": bool(
+                not self.armed and self.candidate == self.last_accepted_label
+            ),
             "current_word": self.current_word,
-            "sentence": " ".join(self.words),
+            # Keep the main sentence field live so clients do not wait for the
+            # auto-commit timer before showing the word currently being spelled.
+            "sentence": self.transcript,
+            "completed_sentence": completed_sentence,
             "transcript": self.transcript,
             "last_event": self.last_event,
             "last_event_at": self.last_event_at,
         }
 
-    def update(self, label: str, confidence: float) -> str:
+    def update(self, label: str, confidence: float) -> tuple[str, bool]:
         now = time.monotonic()
         self.last_seen = now
         observed = label if label == "blank" or confidence >= 0.55 else "blank"
         self.history.append((observed, confidence))
         counts = Counter(item[0] for item in self.history)
         stable = counts.most_common(1)[0][0]
-        if counts[stable] < 3:
+        if counts[stable] < 2:
             stable = ""
+        # High-confidence changes can skip the extra majority-frame wait.
+        # The accepted-label gate below still prevents duplicate letters.
+        if (
+            label != "blank"
+            and confidence >= FAST_ACCEPT_CONFIDENCE
+            and (self.armed or label != self.last_accepted_label)
+        ):
+            stable = label
 
         if stable and stable != self.candidate:
             self.candidate = stable
             self.candidate_since = now
 
         held_for = now - self.candidate_since
-        if stable == "blank" and held_for >= 0.35:
+        letter_accepted = False
+        if stable == "blank" and held_for >= BLANK_RELEASE_SECONDS:
             self.armed = True
-        elif stable and stable != "blank" and held_for >= 0.65 and self.armed:
+            self.last_accepted_label = ""
+        elif (
+            stable
+            and stable != "blank"
+            and (self.armed or stable != self.last_accepted_label)
+        ):
             self.current_word += stable
             self.last_letter_at = now
             self.last_event = stable
             self.last_event_at = now
             self.armed = False
+            self.last_accepted_label = stable
+            letter_accepted = True
 
         # A quiet pause closes the current fingerspelled word automatically.
-        if self.current_word and now - self.last_letter_at >= 1.8:
+        if self.current_word and now - self.last_letter_at >= WORD_PAUSE_SECONDS:
             self.commit_word()
-        return stable
+        return stable, letter_accepted
 
     def commit_word(self) -> None:
         if self.current_word:
@@ -252,6 +282,7 @@ class TranscriptionSession:
             self.words.clear()
             self.history.clear()
             self.armed = self.candidate in ("", "blank")
+            self.last_accepted_label = "" if self.armed else self.last_accepted_label
             self.last_event = "Transcript cleared"
             self.last_event_at = time.monotonic()
 
@@ -338,8 +369,8 @@ async def predict_frame(session_id: str, request: Request) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     session = get_session(session_id)
-    stable = session.update(label, confidence)
-    return session.snapshot(label, confidence, stable)
+    stable, letter_accepted = session.update(label, confidence)
+    return session.snapshot(label, confidence, stable, letter_accepted)
 
 
 @app.post("/api/sessions/{session_id}/action")
