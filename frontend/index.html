@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1014" />
+    <title>Sign to Text · Live Fingerspelling</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/styles.css?v=3" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Sign to Text home">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span>
+          <span>sign<span class="brand-light">to</span>text</span>
+        </a>
+        <div class="topbar-right">
+          <span class="mode-label"><span class="live-dot"></span> LIVE FINGERSPELLING</span>
+          <span class="api-status" id="api-status"><span class="status-dot"></span><span id="api-status-text">Connecting</span></span>
+        </div>
+      </header>
+
+      <main>
+        <section class="intro">
+          <div class="eyebrow">CAMERA · RECOGNITION · TRANSCRIPTION</div>
+          <h1>Your hands,<br /><span>in words.</span></h1>
+          <p>Spell ASL letters in front of your camera. Hold each sign, release, then move to the next. Your words build into a live transcript.</p>
+        </section>
+
+        <section class="workspace" aria-label="Live sign language transcription">
+          <div class="camera-column">
+            <div class="camera-card">
+              <div class="camera-head">
+                <div><span class="camera-icon" aria-hidden="true">◉</span><span>CAMERA FEED</span></div>
+                <span class="feed-indicator" id="feed-indicator"><i></i> CAMERA OFF</span>
+              </div>
+              <div class="video-stage" id="video-stage">
+                <video id="camera" autoplay playsinline muted></video>
+                <div class="stage-placeholder" id="stage-placeholder">
+                  <div class="camera-placeholder-icon" aria-hidden="true"><span></span></div>
+                  <strong>Your camera preview will appear here</strong>
+                  <span>Allow camera access to begin</span>
+                </div>
+                <div class="roi-frame" aria-hidden="true"><span class="roi-corner tl"></span><span class="roi-corner tr"></span><span class="roi-corner bl"></span><span class="roi-corner br"></span><span class="roi-label">PLACE HAND HERE</span></div>
+                <div class="prediction-chip"><span class="prediction-label" id="prediction-label">—</span><span class="prediction-confidence" id="prediction-confidence">Waiting</span></div>
+                <div class="stage-bottom-label"><span class="scan-line"></span> LIVE INPUT</div>
+              </div>
+              <div class="camera-controls">
+                <button class="button button-primary" id="start-button" type="button"><span class="button-play">▶</span> Start camera</button>
+                <button class="button button-secondary" id="stop-button" type="button" disabled>Stop</button>
+                <span class="camera-hint" id="camera-hint">Preview here · cropped frames go to the backend</span>
+              </div>
+            </div>
+
+            <div class="how-card">
+              <div class="how-heading"><span class="sparkle">✳</span><span>HOW TO SPELL</span></div>
+              <div class="steps">
+                <div class="step"><span class="step-number">01</span><span>Hold a letter sign<br />until it appears</span></div>
+                <span class="step-arrow">→</span>
+                <div class="step"><span class="step-number">02</span><span>Lower your hand<br />to release it</span></div>
+                <span class="step-arrow">→</span>
+                <div class="step"><span class="step-number">03</span><span>Pause to finish<br />a word</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="transcript-column">
+            <div class="transcript-card">
+              <div class="transcript-head">
+                <div><span class="transcript-icon" aria-hidden="true">✳</span><span>LIVE TRANSCRIPT</span></div>
+                <span class="auto-badge"><span></span> AUTO</span>
+              </div>
+              <div class="current-letter-block">
+                <div class="section-label">CURRENT LETTER</div>
+                <div class="current-letter-row"><span class="current-letter" id="current-letter">—</span><span class="letter-state" id="letter-state">Waiting for a sign</span></div>
+              </div>
+              <div class="word-block">
+                <div class="section-label">CURRENT WORD <span class="word-note">PAUSE TO COMPLETE</span></div>
+                <div class="current-word" id="current-word"><span class="empty-word">Your letters will collect here</span></div>
+              </div>
+              <div class="sentence-block">
+                <div class="section-label">SENTENCE</div>
+                <div class="sentence-text" id="sentence-text"><span class="empty-sentence">Your completed words will appear here.</span></div>
+                <div class="transcript-footer"><span><span class="tiny-live-dot"></span> Updates as you sign</span><span id="word-count">0 WORDS</span></div>
+              </div>
+              <div class="transcript-actions">
+                <button class="icon-button" id="backspace-button" type="button" title="Remove the last letter" aria-label="Remove the last letter"><span aria-hidden="true">⌫</span><span>Undo</span></button>
+                <button class="icon-button" id="space-button" type="button" title="Finish this word" aria-label="Finish this word"><span aria-hidden="true">↵</span><span>Finish word</span></button>
+                <button class="icon-button clear-button" id="clear-button" type="button" title="Clear transcript"><span aria-hidden="true">×</span><span>Clear</span></button>
+              </div>
+            </div>
+            <div class="model-note"><span class="info-icon">i</span><span>This model recognizes <strong>static ASL fingerspelling</strong> (A–Z). It assembles letters into words; it does not interpret moving signs or sign-language grammar.</span></div>
+          </div>
+        </section>
+      </main>
+
+      <footer><span>BUILT FOR CLEARER COMMUNICATION</span><span>ASL FINGERSPELLING · LOCAL CAMERA PREVIEW</span></footer>
+    </div>
+    <canvas id="capture-canvas" hidden></canvas>
+    <script src="/static/app.js?v=3" defer></script>
+  </body>
+</html>

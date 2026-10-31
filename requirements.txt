@@ -1,0 +1,5 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+tensorflow>=2.15
+opencv-python>=4.8
+numpy>=1.24
